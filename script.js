@@ -4,19 +4,13 @@ const lineNumbers = document.getElementById('line-numbers');
 const runBtn = document.getElementById('run-btn');
 const outputElement = document.getElementById('output');
 
-// 1. Live Input Synchronizer (Line numbers & Highlight)
-editor.addEventListener('input', () => {
-    updateEditor();
-});
-
-// Keep scrolling matched exactly between invisible input layer and view layer
+editor.addEventListener('input', updateEditor);
 editor.addEventListener('scroll', () => {
     document.getElementById('highlight-layer').scrollTop = editor.scrollTop;
     document.getElementById('highlight-layer').scrollLeft = editor.scrollLeft;
     lineNumbers.scrollTop = editor.scrollTop;
 });
 
-// Handle Tab Key cleanly
 editor.addEventListener('keydown', function(e) {
     if (e.key === 'Tab') {
         e.preventDefault();
@@ -30,147 +24,310 @@ editor.addEventListener('keydown', function(e) {
 
 function updateEditor() {
     const text = editor.value;
-    
-    // Update Line Numbers
     const linesCount = text.split('\n').length;
     let gutterHTML = '';
-    for (let i = 1; i <= linesCount; i++) {
-        gutterHTML += i + '<br>';
-    }
+    for (let i = 1; i <= linesCount; i++) gutterHTML += i + '<br>';
     lineNumbers.innerHTML = gutterHTML;
-
-    // Apply Real-time Syntax Coloring
     highlightCode.innerHTML = applySyntaxHighlighting(text);
 }
 
-// 2. Syntax Highlighter Regex Core
+// 1. Syntax Highlighter Engine
 function applySyntaxHighlighting(code) {
-    // Escape HTML characters safely
-    let html = code
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+    let html = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-    // Match keywords: let, say, ask, when, repeat, if, elif, else
-    const keywords = /\b(let|say|ask|when|repeat|if|elif|else)\b/g;
-    // Match comments starting with #
-    const comments = /(#[^\n]*)/g;
-    // Match Strings
-    const strings = /("[^"\\]*(?:\\.[^"\\]*)*")/g;
-    // Match Numbers
-    const numbers = /\b(\d+)\b/g;
+    const commentRegex = /(#[^\n]*)/g;
+    const stringRegex = /("[^"]*")/g;
+    const numberRegex = /\b(\d+(?:\.\d+)?)\b/g;
+    const booleanRegex = /\b(yes|no)\b/g;
+    const taskRegex = /\b(task)\b/g;
+    const builtinRegex = /\b(say|ask|list|at)\b/g;
+    const keywordRegex = /\b(let|when|repeat|if|elif|else)\b/g;
+    const operatorRegex = /\b(and|or|not|is)\b|(\+|-|\*|\/|=|<|>|!)/g;
 
-    // We apply token parsing (Order matters to prevent string contents from breaking keywords)
-    html = html.replace(strings, '<span class="token-string">$1</span>');
-    
-    // Quick trick to bypass wrapping keywords inside comments
-    html = html.replace(comments, '<span class="token-comment">$1</span>');
-
-    // Run keywords token injection outside string modifications
-    html = html.replace(keywords, match => {
-        // Only modify if not already inside an injected span tag
-        return `<span class="token-keyword">${match}</span>`;
+    let placeholders = [];
+    html = html.replace(commentRegex, match => {
+        placeholders.push(`<span class="token-comment">${match}</span>`);
+        return `___PLACEHOLDER_${placeholders.length - 1}___`;
+    });
+    html = html.replace(stringRegex, match => {
+        placeholders.push(`<span class="token-string">${match}</span>`);
+        return `___PLACEHOLDER_${placeholders.length - 1}___`;
     });
 
-    html = html.replace(numbers, '<span class="token-number">$1</span>');
+    html = html.replace(taskRegex, '<span class="token-task">$1</span>');
+    html = html.replace(keywordRegex, '<span class="token-keyword">$1</span>');
+    html = html.replace(builtinRegex, '<span class="token-builtin">$1</span>');
+    html = html.replace(booleanRegex, '<span class="token-boolean">$1</span>');
+    html = html.replace(operatorRegex, match => `<span class="token-operator">${match}</span>`);
+    html = html.replace(numberRegex, '<span class="token-number">$1</span>');
 
+    for (let i = 0; i < placeholders.length; i++) {
+        html = html.replace(`___PLACEHOLDER_${i}___`, placeholders[i]);
+    }
     return html;
 }
 
-// 3. Execution Engine Core (Lino Interpreter Runtime)
+// 2. Interpreter Runtime Engine
 runBtn.addEventListener('click', runLino);
 
 function runLino() {
     const code = editor.value;
-    outputElement.textContent = ""; // Reset terminal screen
-    let variables = {};
+    outputElement.textContent = ""; 
+    
+    let globalScope = {};
+    let customTasks = {}; // Stores functions
 
-    function logToConsole(text) {
-        outputElement.textContent += text + "\n";
+    function logToConsole(text, isError = false) {
+        if (isError) {
+            outputElement.innerHTML += `<span style="color: #f48771; font-weight:bold;">${text}</span>\n`;
+        } else {
+            outputElement.textContent += (text === undefined ? "none" : text) + "\n";
+        }
     }
 
     const lines = code.split('\n');
-    let i = 0;
+    let currentLineIndex = 0;
 
-    while (i < lines.length) {
-        let line = lines[i].trim();
-        
-        if (line === "" || line.startsWith("#")) {
-            i++;
-            continue;
-        }
+    function parseError(type, msg) {
+        throw new Error(`[Line ${currentLineIndex + 1}] ${type}: ${msg}`);
+    }
 
-        // Lino Syntax: say "hello" / say x
-        if (line.startsWith("say ")) {
-            let expr = line.substring(4).trim();
-            if (expr.startsWith('"') && expr.endsWith('"')) {
-                logToConsole(expr.slice(1, -1));
-            } else {
-                logToConsole(evaluateExpression(expr, variables));
-            }
-        }
-        // Lino Syntax: let x = 5
-        else if (line.startsWith("let ")) {
-            let assignment = line.substring(4).trim();
-            let parts = assignment.split('=');
-            if (parts.length === 2) {
-                let varName = parts[0].trim();
-                let varValue = parts[1].trim();
-                variables[varName] = evaluateExpression(varValue, variables);
-            }
-        }
-        // Lino Syntax: ask "Your Name" to variable
-        else if (line.startsWith("ask ")) {
-            let content = line.substring(4).trim();
-            if (content.includes("to ")) {
-                let parts = content.split("to ");
-                let promptText = parts[0].trim().replace(/"/g, '');
-                let varName = parts[1].trim();
-                let userInput = prompt(promptText);
-                variables[varName] = isNaN(userInput) ? userInput : Number(userInput);
-            }
-        }
-        // Lino Syntax: repeat 5
-        else if (line.startsWith("repeat ")) {
-            let repeatNum = parseInt(line.substring(7).trim());
-            let loopLines = [];
-            let j = i + 1;
-            
-            while (j < lines.length && (lines[j].startsWith("\t") || lines[j].startsWith("    "))) {
-                loopLines.push(lines[j]);
+    function getBlockLines(startIndex) {
+        let block = [];
+        let j = startIndex + 1;
+        while (j < lines.length) {
+            if (lines[j].trim() === "") {
+                block.push({ text: "", index: j });
                 j++;
+                continue;
             }
-
-            for (let r = 0; r < repeatNum; r++) {
-                loopLines.forEach(loopLine => {
-                    let cleanLine = loopLine.trim();
-                    if (cleanLine.startsWith("say ")) {
-                        let expr = cleanLine.substring(4).trim();
-                        if (expr.startsWith('"') && expr.endsWith('"')) {
-                            logToConsole(expr.slice(1, -1));
-                        } else {
-                            logToConsole(evaluateExpression(expr, variables));
-                        }
-                    }
-                });
+            if (lines[j].startsWith("\t") || lines[j].startsWith("    ")) {
+                block.push({ text: lines[j], index: j });
+                j++;
+            } else {
+                break;
             }
-            i = j - 1;
         }
-        i++;
+        return block;
     }
-}
 
-function evaluateExpression(expr, variables) {
-    for (let varName in variables) {
-        let regex = new RegExp(`\\b${varName}\\b`, 'g');
-        expr = expr.replace(regex, variables[varName]);
+    function executeBlock(blockObjects, localScope = {}) {
+        let savedIndex = currentLineIndex;
+        for (let b = 0; b < blockObjects.length; b++) {
+            currentLineIndex = blockObjects[b].index;
+            let lineText = blockObjects[b].text.trim();
+            if (lineText === "" || lineText.startsWith("#")) continue;
+            executeStatement(lineText, localScope);
+        }
+        currentLineIndex = savedIndex;
     }
+
+    function executeStatement(lineText, scope = globalScope) {
+        // Handling say
+        if (lineText.startsWith("say ")) {
+            let expr = lineText.substring(4).trim();
+            logToConsole(evaluateExpression(expr, scope));
+        } 
+        // Handling variables initialization/update
+        else if (lineText.startsWith("let ")) {
+            let assignment = lineText.substring(4).trim();
+            let parts = assignment.split('=');
+            if (parts.length !== 2) parseError("Syntax Error", "Invalid variable declaration formatting.");
+            let varName = parts[0].trim();
+            scope[varName] = evaluateExpression(parts[1].trim(), scope);
+        }
+        // Handling user input (ask)
+        else if (lineText.startsWith("ask ")) {
+            let content = lineText.substring(4).trim();
+            if (!content.includes("to ")) parseError("Syntax Error", "Expected 'to' keyword target assignment.");
+            let parts = content.split("to ");
+            let promptText = parts[0].trim().replace(/"/g, '');
+            let varName = parts[1].trim();
+            let userInput = prompt(promptText);
+            scope[varName] = (isNaN(userInput) || userInput.trim() === "") ? userInput : Number(userInput);
+        }
+        // Handling function/task call configurations directly on isolated lines
+        else if (lineText.includes("(") && lineText.endsWith(")")) {
+            evaluateExpression(lineText, scope);
+        }
+        else {
+            parseError("Syntax Error", `Unknown instruction keyword alignment: '${lineText}'`);
+        }
+    }
+
+    function evaluateExpression(expr, scope = globalScope) {
+        let working = expr.trim();
+
+        // 1. Convert native boolean values
+        working = working.replace(/\byes\b/g, 'true').replace(/\bno\b/g, 'false');
+
+        // 2. Convert Lino List syntax rules: list("A", "B") -> ["A", "B"]
+        if (working.startsWith("list(") && working.endsWith(")")) {
+            let itemsRaw = working.slice(5, -1);
+            // Splitting elements cleanly
+            let parsedArr = Function(`return [${itemsRaw}];`)();
+            return parsedArr;
+        }
+
+        // 3. Convert List lookup syntax rules: x at 1 -> x[1]
+        if (working.includes(" at ")) {
+            let parts = working.split(" at ");
+            let listName = parts[0].trim();
+            let indexExpr = parts[1].trim();
+            let targetList = scope[listName] || globalScope[listName];
+            if (!Array.isArray(targetList)) parseError("Name Error", `'${listName}' is not an active list object type.`);
+            let evaluatedIndex = evaluateExpression(indexExpr, scope);
+            return targetList[evaluatedIndex];
+        }
+
+        // 4. Translate logical word operations safely
+        working = working.replace(/\bis not\b/g, '!==')
+                         .replace(/\bis\b/g, '===')
+                         .replace(/\band\b/g, '&&')
+                         .replace(/\bor\b/g, '||')
+                         .replace(/\bnot\b/g, '!');
+
+        // 5. Intercept custom task execution commands: functionName(args)
+        let funcMatch = working.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)$/);
+        if (funcMatch) {
+            let taskName = funcMatch[1];
+            let rawArgs = funcMatch[2];
+            if (customTasks[taskName]) {
+                let taskObj = customTasks[taskName];
+                let passedArgs = rawArgs.trim() === "" ? [] : rawArgs.split(',').map(a => evaluateExpression(a.trim(), scope));
+                
+                if (passedArgs.length !== taskObj.params.length) {
+                    parseError("Argument Error", `Task '${taskName}' expected ${taskObj.params.length} parameters, got ${passedArgs.length}.`);
+                }
+                
+                // Build execution bubble sandbox
+                let taskScope = {};
+                taskObj.params.forEach((param, idx) => {
+                    taskScope[param] = passedArgs[idx];
+                });
+
+                executeBlock(taskObj.block, taskScope);
+                return; // Currently basic tasks don't return expressions explicitly
+            }
+        }
+
+        // Inject active scoped variables
+        let combinedScope = { ...globalScope, ...scope };
+        for (let key in combinedScope) {
+            let regex = new RegExp(`\\b${key}\\b`, 'g');
+            let val = combinedScope[key];
+            working = working.replace(regex, typeof val === 'string' ? `"${val}"` : JSON.stringify(val));
+        }
+
+        try {
+            return Function(`return (${working});`)();
+        } catch (e) {
+            // Remove lingering artifact tracking
+            return working.replace(/"/g, '');
+        }
+    }
+
+    // Pipeline Engine Loop Execution Context
     try {
-        return Function(`return (${expr});`)();
-    } catch (e) {
-        return expr;
+        while (currentLineIndex < lines.length) {
+            let rawLine = lines[currentLineIndex];
+            let line = rawLine.trim();
+            
+            if (line === "" || line.startsWith("#") || rawLine.startsWith("\t") || rawLine.startsWith("    ")) {
+                currentLineIndex++;
+                continue;
+            }
+
+            // A. Handling custom functions configuration: task name(param)
+            if (line.startsWith("task ")) {
+                let taskSignature = line.substring(5).trim();
+                let match = taskSignature.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)$/);
+                if (!match) parseError("Syntax Error", "Invalid task parameter signature pattern layout.");
+                
+                let taskName = match[1];
+                let params = match[2].trim() === "" ? [] : match[2].split(',').map(p => p.trim());
+                let block = getBlockLines(currentLineIndex);
+                
+                if (block.length === 0) parseError("Block Error", "Expected indented statements under task block declaration.");
+                
+                customTasks[taskName] = { params: params, block: block };
+                currentLineIndex += block.length + 1;
+                continue;
+            }
+
+            // B. Handling definite looping loops: repeat X
+            if (line.startsWith("repeat ")) {
+                let repeatNum = parseInt(evaluateExpression(line.substring(7).trim(), globalScope));
+                let block = getBlockLines(currentLineIndex);
+                if (block.length === 0) parseError("Block Error", "Expected indented statements under repeat block layout.");
+                
+                for (let r = 0; r < repeatNum; r++) {
+                    executeBlock(block);
+                }
+                currentLineIndex += block.length + 1;
+                continue;
+            }
+
+            // C. Handling indefinite iterations loops: when condition
+            if (line.startsWith("when ")) {
+                let conditionExpr = line.substring(5).trim();
+                let block = getBlockLines(currentLineIndex);
+                if (block.length === 0) parseError("Block Error", "Expected indented statements under when loop declaration.");
+                
+                let protectionCount = 0;
+                while (evaluateExpression(conditionExpr, globalScope) === true) {
+                    executeBlock(block);
+                    protectionCount++;
+                    if (protectionCount > 5000) parseError("Infinite Loop Error", "Loop execution overflow threshold reached (>5000 loops).");
+                }
+                currentLineIndex += block.length + 1;
+                continue;
+            }
+
+            // D. Handling operational branching logic: if, elif, else
+            if (line.startsWith("if ")) {
+                let condition = line.substring(3).trim();
+                let block = getBlockLines(currentLineIndex);
+                if (block.length === 0) parseError("Block Error", "Expected indented statements under if execution path.");
+                
+                let conditionMet = false;
+                if (evaluateExpression(condition, globalScope) === true) {
+                    executeBlock(block);
+                    conditionMet = true;
+                }
+                currentLineIndex += block.length + 1;
+
+                // Scan and verify next sibling rows for chains
+                while (currentLineIndex < lines.length) {
+                    let nextLine = lines[currentLineIndex].trim();
+                    if (nextLine.startsWith("elif ")) {
+                        let elifBlock = getBlockLines(currentLineIndex);
+                        if (!conditionMet && evaluateExpression(nextLine.substring(5).trim(), globalScope) === true) {
+                            executeBlock(elifBlock);
+                            conditionMet = true;
+                        }
+                        currentLineIndex += elifBlock.length + 1;
+                    } else if (nextLine.startsWith("else")) {
+                        let elseBlock = getBlockLines(currentLineIndex);
+                        if (!conditionMet) {
+                            executeBlock(elseBlock);
+                        }
+                        currentLineIndex += elseBlock.length + 1;
+                        break;
+                    } else {
+                        break;
+                    }
+                }
+                continue;
+            }
+
+            // Execute base system lines directly
+            executeStatement(line, globalScope);
+            currentLineIndex++;
+        }
+    } catch (err) {
+        logToConsole(err.message, true);
     }
 }
 
-// Run initial execution mapping to set up line 1
 updateEditor();
