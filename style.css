@@ -1,0 +1,181 @@
+/* ===========================
+   Lino Language
+   style.css
+=========================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Consolas, "Courier New", monospace;
+    background: #1e1e1e;
+    color: #ffffff;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+
+header {
+    background: #252526;
+    padding: 18px;
+    border-bottom: 1px solid #333;
+}
+
+header h1 {
+    font-size: 30px;
+    color: #4FC3F7;
+}
+
+header p {
+    color: #bdbdbd;
+    margin-top: 5px;
+    font-size: 14px;
+}
+
+/* Layout */
+
+main {
+    flex: 1;
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+    overflow: hidden;
+}
+
+/* Panels */
+
+#editor-section,
+#output-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #252526;
+    border-radius: 10px;
+    border: 1px solid #333;
+    overflow: hidden;
+}
+
+/* Panel Titles */
+
+.section-title {
+    background: #333;
+    padding: 12px 15px;
+    font-weight: bold;
+    border-bottom: 1px solid #444;
+}
+
+/* Code Editor */
+
+#editor {
+    flex: 1;
+    resize: none;
+    border: none;
+    outline: none;
+
+    background: #1e1e1e;
+    color: #ffffff;
+
+    padding: 15px;
+
+    font-size: 16px;
+    line-height: 1.6;
+
+    font-family: Consolas, monospace;
+}
+
+/* Run Button */
+
+#runButton {
+    border: none;
+    background: #0078D7;
+    color: white;
+
+    padding: 15px;
+
+    cursor: pointer;
+
+    font-size: 17px;
+    font-weight: bold;
+
+    transition: 0.2s;
+}
+
+#runButton:hover {
+    background: #2196F3;
+}
+
+#runButton:active {
+    transform: scale(0.98);
+}
+
+/* Output */
+
+#output {
+    flex: 1;
+
+    background: #111111;
+    color: #7CFC00;
+
+    padding: 15px;
+
+    overflow-y: auto;
+
+    white-space: pre-wrap;
+    word-break: break-word;
+
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+/* Footer */
+
+footer {
+    background: #252526;
+    border-top: 1px solid #333;
+
+    text-align: center;
+
+    padding: 12px;
+
+    color: #888;
+    font-size: 13px;
+}
+
+/* Scrollbar */
+
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
+
+/* Mobile */
+
+@media (max-width: 900px) {
+
+    main {
+        flex-direction: column;
+    }
+
+    #editor-section,
+    #output-section {
+        min-height: 300px;
+    }
+
+}
