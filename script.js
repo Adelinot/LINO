@@ -33,8 +33,10 @@ function updateEditor() {
 
 // 1. Syntax Highlighter Engine
 function applySyntaxHighlighting(code) {
+    // 1. Clean and escape any raw HTML the user typed first
     let html = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+    // 2. Define the exact regex patterns
     const commentRegex = /(#[^\n]*)/g;
     const stringRegex = /("[^"]*")/g;
     const numberRegex = /\b(\d+(?:\.\d+)?)\b/g;
@@ -42,8 +44,10 @@ function applySyntaxHighlighting(code) {
     const taskRegex = /\b(task)\b/g;
     const builtinRegex = /\b(say|ask|list|at)\b/g;
     const keywordRegex = /\b(let|when|repeat|if|elif|else)\b/g;
-    const operatorRegex = /\b(and|or|not|is)\b|(\+|-|\*|\/|=|<|>|!)/g;
+    const logicWordRegex = /\b(and|or|not|is|is not)\b/g;
+    const operatorRegex = /(\+|-|\*|\/|=||!)/g; // Removed < and > from here to prevent tag breaking
 
+    // 3. Protect comments and strings first using placeholders
     let placeholders = [];
     html = html.replace(commentRegex, match => {
         placeholders.push(`<span class="token-comment">${match}</span>`);
@@ -54,19 +58,25 @@ function applySyntaxHighlighting(code) {
         return `___PLACEHOLDER_${placeholders.length - 1}___`;
     });
 
+    // 4. Highlight elements that do NOT use <, >, or = symbols first
     html = html.replace(taskRegex, '<span class="token-task">$1</span>');
     html = html.replace(keywordRegex, '<span class="token-keyword">$1</span>');
     html = html.replace(builtinRegex, '<span class="token-builtin">$1</span>');
     html = html.replace(booleanRegex, '<span class="token-boolean">$1</span>');
-    html = html.replace(operatorRegex, match => `<span class="token-operator">${match}</span>`);
+    html = html.replace(logicWordRegex, '<span class="token-operator">$1</span>');
     html = html.replace(numberRegex, '<span class="token-number">$1</span>');
 
+    // 5. Safely highlight operators WITHOUT breaking the span structures
+    // This looks for operators that aren't inside an HTML tag name
+    html = html.replace(/(?<!<[^>]*)([\+\-\*\/=!]+)(?![^<]*>)/g, '<span class="token-symbol">$1</span>');
+
+    // 6. Restore comments and strings safely
     for (let i = 0; i < placeholders.length; i++) {
         html = html.replace(`___PLACEHOLDER_${i}___`, placeholders[i]);
     }
+
     return html;
 }
-
 // 2. Interpreter Runtime Engine
 runBtn.addEventListener('click', runLino);
 
