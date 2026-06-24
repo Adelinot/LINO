@@ -6,7 +6,7 @@ const outputElement = document.getElementById('output');
 
 editor.addEventListener('input', updateEditor);
 
-// Linked Scroll Listeners
+// Synchronized Editor Scrolling Layers
 editor.addEventListener('scroll', () => {
     const highlightLayer = document.getElementById('highlight-layer');
     highlightLayer.scrollTop = editor.scrollTop;
@@ -14,6 +14,7 @@ editor.addEventListener('scroll', () => {
     lineNumbers.scrollTop = editor.scrollTop;
 });
 
+// Custom Tab Key Indentation Hijack
 editor.addEventListener('keydown', function(e) {
     if (e.key === 'Tab') {
         e.preventDefault();
@@ -204,39 +205,35 @@ async function runLino() {
         let working = expr.trim();
         working = working.replace(/\byes\b/g, 'true').replace(/\bno\b/g, 'false');
 
+        // Handle List Declarations
         if (working.startsWith("list(") && working.endsWith(")")) {
             let itemsRaw = working.slice(5, -1);
             return Function(`return [${itemsRaw}];`)();
         }
 
-        if (working.includes(" at ")) {
-            let parts = working.split(" at ");
-            let listName = parts[0].trim().replace(/[\(\)]/g, ''); 
-            let indexExpr = parts[1].trim().replace(/[\(\)]/g, '');
-            
-            let targetList = scope[listName] !== undefined ? scope[listName] : globalScope[listName];
-            if (!Array.isArray(targetList)) parseError("Name Error", `'${listName}' is not a list.`);
-            
-            return targetList[evaluateExpression(indexExpr, scope)];
-        }
-
-        // Hide string expressions safely to prevent corruption inside quotes
+        // 1. Hide literal string sequences to shield them from engine translation hooks
         let stringPlaceholders = [];
         working = working.replace(/("[^"]*")/g, match => {
             stringPlaceholders.push(match);
             return `___STR_TOKEN_${stringPlaceholders.length - 1}___`;
         });
 
+        // 2. Safely translate Lino 'X at Y' statements to executable JavaScript 'X[Y]' arrays
+        working = working.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\s+at\s+([a-zA-Z0-9_]+|\([^)]+\))/g, '$1[$2]');
+
+        // 3. Process structural logical keywords safely outside text definitions
         working = working.replace(/\bis not\b/g, '!==')
                          .replace(/\bis\b/g, '===')
                          .replace(/\band\b/g, '&&')
                          .replace(/\bor\b/g, '||')
                          .replace(/\bnot\b/g, '!');
 
+        // 4. Restore uncorrupted textual content fields back into the equation matrix
         for (let i = 0; i < stringPlaceholders.length; i++) {
             working = working.replace(`___STR_TOKEN_${i}___`, stringPlaceholders[i]);
         }
 
+        // Custom Task Engine Matching Hooks
         let funcMatch = working.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)$/);
         if (funcMatch) {
             let taskName = funcMatch[1];
