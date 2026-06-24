@@ -8,6 +8,15 @@
     --accent-color: #0e639c;
     --accent-hover: #1177bb;
     --font-mono: 'Consolas', 'Fira Code', 'Courier New', monospace;
+
+    /* Professional Python-competitor syntax coloring stack */
+    --token-keyword: #c586c0;    /* Control: if, elif, else, when, repeat */
+    --token-builtin: #dcdcaa;    /* Core commands: say, ask, list */
+    --token-task: #4fc1ff;       /* Function keywords: task */
+    --token-string: #ce9178;     /* Strings */
+    --token-number: #b5cea8;     /* Integers/Decimals */
+    --token-boolean: #569cd6;    /* yes / no constants */
+    --token-comment: #6a9955;    /* Code Comments */
 }
 
 * {
@@ -50,6 +59,7 @@ body {
     font-size: 13px;
     cursor: pointer;
     border-radius: 4px;
+    font-weight: 500;
 }
 
 #run-btn:hover { background-color: var(--accent-hover); }
@@ -80,7 +90,6 @@ body {
     border-bottom: 1px solid var(--border-color);
 }
 
-/* Layer Alignment Setup */
 .ide-wrapper {
     position: relative;
     flex: 1;
@@ -106,7 +115,7 @@ body {
 #editor, #highlight-layer {
     position: absolute;
     top: 0;
-    left: 45px; /* Offset past line numbers */
+    left: 45px;
     width: calc(100% - 45px);
     height: 100%;
     margin: 0;
@@ -122,8 +131,8 @@ body {
 #editor {
     z-index: 2;
     background: transparent;
-    color: transparent; /* Makes raw text invisible, allowing highlight to show */
-    caret-color: #ffffff; /* Keeps the typing cursor visible */
+    color: transparent;
+    caret-color: #ffffff;
     border: none;
     resize: none;
     outline: none;
@@ -131,7 +140,7 @@ body {
 
 #highlight-layer {
     z-index: 1;
-    pointer-events: none; /* Let clicks pass directly to textarea */
+    pointer-events: none;
     color: #9cdcfe;
     background-color: transparent;
 }
@@ -139,7 +148,7 @@ body {
 #output {
     flex: 1;
     background-color: #151515;
-    color: #4ec9b0;
+    color: #e1e1e1;
     padding: 15px;
     font-family: var(--font-mono);
     font-size: 14px;
@@ -148,14 +157,17 @@ body {
     overflow-y: auto;
 }
 
-/* --- Syntax Highlighting Tokens --- */
-.token-keyword { color: #569cd6; font-weight: bold; } /* let, when, repeat, say, ask, if, elif, else */
-.token-string { color: #ce9178; }  /* "strings" */
-.token-number { color: #b5cea8; }  /* 123 */
-.token-comment { color: #6a9955; font-style: italic; } /* # comments */
-.token-operator { color: #d4d4d4; }
+/* --- Granular Syntax Engine CSS Tokens --- */
+.token-keyword { color: var(--token-keyword); font-weight: bold; }
+.token-builtin { color: var(--token-builtin); }
+.token-task { color: var(--token-task); font-weight: bold; }
+.token-string { color: var(--token-string); }
+.token-number { color: var(--token-number); }
+.token-boolean { color: var(--token-boolean); }
+.token-operator { color: #b4b4b4; font-weight: bold; }
+.token-symbol { color: #ffd700; }
+.token-comment { color: var(--token-comment); font-style: italic; }
 
-/* Custom Scrollbars */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-main); }
 ::-webkit-scrollbar-thumb { background: #424242; border-radius: 4px; }
