@@ -6,7 +6,7 @@ const outputElement = document.getElementById('output');
 
 editor.addEventListener('input', updateEditor);
 
-// Synchronized Editor Scrolling Layers
+// Layer Scroll Binder
 editor.addEventListener('scroll', () => {
     const highlightLayer = document.getElementById('highlight-layer');
     highlightLayer.scrollTop = editor.scrollTop;
@@ -14,7 +14,7 @@ editor.addEventListener('scroll', () => {
     lineNumbers.scrollTop = editor.scrollTop;
 });
 
-// Custom Tab Key Indentation Hijack
+// Custom Tab Key Interception Rule
 editor.addEventListener('keydown', function(e) {
     if (e.key === 'Tab') {
         e.preventDefault();
@@ -205,30 +205,30 @@ async function runLino() {
         let working = expr.trim();
         working = working.replace(/\byes\b/g, 'true').replace(/\bno\b/g, 'false');
 
-        // Handle List Declarations
+        // List Initialization Conversion
         if (working.startsWith("list(") && working.endsWith(")")) {
             let itemsRaw = working.slice(5, -1);
             return Function(`return [${itemsRaw}];`)();
         }
 
-        // 1. Hide literal string sequences to shield them from engine translation hooks
+        // 1. Hide literal strings to protect them from conversion hooks
         let stringPlaceholders = [];
         working = working.replace(/("[^"]*")/g, match => {
             stringPlaceholders.push(match);
             return `___STR_TOKEN_${stringPlaceholders.length - 1}___`;
         });
 
-        // 2. Safely translate Lino 'X at Y' statements to executable JavaScript 'X[Y]' arrays
+        // 2. Translate 'X at Y' safely into standard executable bracket references 'X[Y]'
         working = working.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\s+at\s+([a-zA-Z0-9_]+|\([^)]+\))/g, '$1[$2]');
 
-        // 3. Process structural logical keywords safely outside text definitions
+        // 3. Process standalone logical text keywords
         working = working.replace(/\bis not\b/g, '!==')
                          .replace(/\bis\b/g, '===')
                          .replace(/\band\b/g, '&&')
                          .replace(/\bor\b/g, '||')
                          .replace(/\bnot\b/g, '!');
 
-        // 4. Restore uncorrupted textual content fields back into the equation matrix
+        // 4. Restore uncorrupted strings back into the statement expression
         for (let i = 0; i < stringPlaceholders.length; i++) {
             working = working.replace(`___STR_TOKEN_${i}___`, stringPlaceholders[i]);
         }
@@ -258,7 +258,24 @@ async function runLino() {
         try {
             return new Function(...keys, `return (${working});`)(...vals);
         } catch (e) {
-            return working.replace(/"/g, '');
+            // --- COMPOUND STRING INTERPOLATION FALLBACK STACK ---
+            let tokens = working.split('+');
+            let finalStitchedResult = "";
+
+            for (let token of tokens) {
+                let cleanToken = token.trim();
+                if (cleanToken.startsWith('"') && cleanToken.endsWith('"')) {
+                    finalStitchedResult += cleanToken.slice(1, -1);
+                } else {
+                    try {
+                        let evaluatedVar = new Function(...keys, `return (${cleanToken});`)(...vals);
+                        finalStitchedResult += (evaluatedVar !== undefined ? evaluatedVar : cleanToken);
+                    } catch(innerErr) {
+                        finalStitchedResult += cleanToken.replace(/"/g, '');
+                    }
+                }
+            }
+            return finalStitchedResult;
         }
     }
 
