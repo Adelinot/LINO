@@ -9,7 +9,7 @@
     --accent-hover: #1177bb;
     --font-mono: 'Consolas', 'Fira Code', 'Courier New', monospace;
 
-    /* Professional Python-competitor syntax coloring stack */
+    /* Syntax Colors */
     --token-keyword: #c586c0;    /* Control: if, elif, else, when, repeat */
     --token-builtin: #dcdcaa;    /* Core commands: say, ask, list */
     --token-task: #4fc1ff;       /* Function keywords: task */
@@ -117,6 +117,7 @@ body {
     overflow: hidden;
 }
 
+/* Perfect Match Overlay Layout */
 #editor, #highlight-layer {
     position: absolute;
     top: 0;
@@ -124,21 +125,22 @@ body {
     width: calc(100% - 45px);
     height: 100%;
     margin: 0;
-    padding: 15px;
-    font-family: var(--font-mono);
-    font-size: 14px;
-    line-height: 1.5;
+    padding: 15px !important;
+    font-family: var(--font-mono) !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
     tab-size: 4;
-    white-space: pre; /* Keep this matched perfectly */
-    overflow: auto;
-    box-sizing: border-box;
+    white-space: pre !important;
+    word-wrap: normal !important;
+    overflow: auto !important;
+    box-sizing: border-box !important;
 }
 
 #editor {
     z-index: 2;
     background: transparent !important;
-    color: transparent !important; /* Hides raw text typing layer */
-    caret-color: #ffffff !important; /* Keeps your blinking cursor bright white */
+    color: transparent !important;
+    caret-color: #ffffff !important;
     border: none;
     resize: none;
     outline: none;
@@ -147,8 +149,15 @@ body {
 #highlight-layer {
     z-index: 1;
     pointer-events: none;
-    background-color: transparent;
-    color: #9cdcfe; /* Fallback text color if things aren't highlighted */
+    background-color: transparent !important;
+    color: #9cdcfe !important;
+}
+
+#highlight-code {
+    font-family: var(--font-mono) !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+    white-space: pre !important;
 }
 
 #output {
@@ -164,7 +173,7 @@ body {
     height: calc(100% - 32px);
 }
 
-/* --- Granular Syntax Engine CSS Tokens --- */
+/* Token Styles */
 .token-keyword { color: var(--token-keyword); font-weight: bold; }
 .token-builtin { color: var(--token-builtin); }
 .token-task { color: var(--token-task); font-weight: bold; }
@@ -175,7 +184,7 @@ body {
 .token-symbol { color: #ffd700; }
 .token-comment { color: var(--token-comment); font-style: italic; }
 
-/* Inline Terminal Input Area Styling */
+/* In-Terminal Input Box */
 .terminal-input-line {
     display: flex;
     align-items: center;
