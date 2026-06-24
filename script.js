@@ -199,124 +199,77 @@ async function runLino() {
     }
 
     function evaluateExpression(expr, scope = globalScope) {
-        let working = expr.trim();
-        working = working.replace(/\byes\b/g, 'true').replace(/\bno\b/g, 'false');
+    let working = expr.trim();
 
-        if (working.startsWith("list(") && working.endsWith(")")) {
-            let itemsRaw = working.slice(5, -1);
-            return Function(`return [${itemsRaw}];`)();
-        }
+    // 1. Convert native Lino boolean words to JS constants safely
+    working = working.replace(/\byes\b/g, 'true').replace(/\bno\b/g, 'false');
 
-        if (working.includes(" at ")) {
-            let parts = working.split(" at ");
-            let listName = parts[0].trim();
-            let indexExpr = parts[1].trim();
-            let targetList = scope[listName] !== undefined ? scope[listName] : globalScope[listName];
-            if (!Array.isArray(targetList)) parseError("Name Error", `'${listName}' is not a list.`);
-            return targetList[evaluateExpression(indexExpr, scope)];
-        }
+    // 2. Handle Lino List initialization syntax: list("A", "B") -> ["A", "B"]
+    if (working.startsWith("list(") && working.endsWith(")")) {
+        let itemsRaw = working.slice(5, -1);
+        return Function(`return [${itemsRaw}];`)();
+    }
 
-        working = working.replace(/\bis not\b/g, '!==')
-                         .replace(/\bis\b/g, '===')
-                         .replace(/\band\b/g, '&&')
-                         .replace(/\bor\b/g, '||')
-                         .replace(/\bnot\b/g, '!');
+    // 3. Handle List lookup syntax: inventory at 0
+    if (working.includes(" at ")) {
+        let parts = working.split(" at ");
+        let listName = parts[0].trim().replace(/[\(\)]/g, ''); // Clear wrapping tracking parens if any
+        let indexExpr = parts[1].trim().replace(/[\(\)]/g, '');
+        
+        let targetList = scope[listName] !== undefined ? scope[listName] : globalScope[listName];
+        if (!Array.isArray(targetList)) parseError("Name Error", `'${listName}' is not a list.`);
+        
+        let evaluatedIndex = evaluateExpression(indexExpr, scope);
+        return targetList[evaluatedIndex];
+    }
 
-        // Sandbox Context Evaluation: Avoids corrupting string texts
-        let combinedScope = { ...globalScope, ...scope };
-        let keys = Object.keys(combinedScope);
-        let vals = Object.values(combinedScope);
+    // 4. Tokenize strings out BEFORE converting keywords like 'is' or 'and'
+    // This stops "index is now" from changing into "index === now"
+    let stringPlaceholders = [];
+    working = working.replace(/("[^"]*")/g, match => {
+        stringPlaceholders.push(match);
+        return `___STR_TOKEN_${stringPlaceholders.length - 1}___`;
+    });
 
-        try {
-            return new Function(...keys, `return (${working});`)(...vals);
-        } catch (e) {
-            return working.replace(/"/g, '');
+    // 5. Safely translate logic operators ONLY outside of the user's string text
+    working = working.replace(/\bis not\b/g, '!==')
+                     .replace(/\bis\b/g, '===')
+                     .replace(/\band\b/g, '&&')
+                     .replace(/\bor\b/g, '||')
+                     .replace(/\bnot\b/g, '!');
+
+    // 6. Restore the user's original uncorrupted text strings back into the expression
+    for (let i = 0; i < stringPlaceholders.length; i++) {
+        working = working.replace(`___STR_TOKEN_${i}___`, stringPlaceholders[i]);
+    }
+
+    // 7. Check for custom task/function execution formulas
+    let funcMatch = working.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)$/);
+    if (funcMatch) {
+        let taskName = funcMatch[1];
+        let rawArgs = funcMatch[2];
+        if (customTasks[taskName]) {
+            let taskObj = customTasks[taskName];
+            let passedArgs = rawArgs.trim() === "" ? [] : rawArgs.split(',').map(a => evaluateExpression(a.trim(), scope));
+            if (passedArgs.length !== taskObj.params.length) {
+                parseError("Argument Error", `Expected ${taskObj.params.length} parameters, got ${passedArgs.length}.`);
+            }
+            let taskScope = {};
+            taskObj.params.forEach((param, idx) => { taskScope[param] = passedArgs[idx]; });
+            executeBlock(taskObj.block, taskScope);
+            return;
         }
     }
 
+    // 8. Sandbox scope evaluation execution
+    let combinedScope = { ...globalScope, ...scope };
+    let keys = Object.keys(combinedScope);
+    let vals = Object.values(combinedScope);
+
     try {
-        while (currentLineIndex < lines.length) {
-            let rawLine = lines[currentLineIndex];
-            let line = rawLine.trim();
-            
-            if (line === "" || line.startsWith("#") || rawLine.startsWith("\t") || rawLine.startsWith("    ")) {
-                currentLineIndex++;
-                continue;
-            }
-
-            if (line.startsWith("task ")) {
-                let taskSignature = line.substring(5).trim();
-                let match = taskSignature.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)$/);
-                if (!match) parseError("Syntax Error", "Invalid task parameter signature pattern layout.");
-                let taskName = match[1];
-                let params = match[2].trim() === "" ? [] : match[2].split(',').map(p => p.trim());
-                let block = getBlockLines(currentLineIndex);
-                customTasks[taskName] = { params: params, block: block };
-                currentLineIndex += block.length + 1;
-                continue;
-            }
-
-            if (line.startsWith("repeat ")) {
-                let repeatNum = parseInt(evaluateExpression(line.substring(7).trim(), globalScope));
-                let block = getBlockLines(currentLineIndex);
-                for (let r = 0; r < repeatNum; r++) {
-                    await executeBlock(block);
-                }
-                currentLineIndex += block.length + 1;
-                continue;
-            }
-
-            if (line.startsWith("when ")) {
-                let conditionExpr = line.substring(5).trim();
-                let block = getBlockLines(currentLineIndex);
-                let protectionCount = 0;
-                while (evaluateExpression(conditionExpr, globalScope) === true) {
-                    await executeBlock(block);
-                    protectionCount++;
-                    if (protectionCount > 5000) parseError("Infinite Loop Error", "Threshold reached (>5000 iterations).");
-                }
-                currentLineIndex += block.length + 1;
-                continue;
-            }
-
-            if (line.startsWith("if ")) {
-                let condition = line.substring(3).trim();
-                let block = getBlockLines(currentLineIndex);
-                let conditionMet = false;
-                if (evaluateExpression(condition, globalScope) === true) {
-                    await executeBlock(block);
-                    conditionMet = true;
-                }
-                currentLineIndex += block.length + 1;
-
-                while (currentLineIndex < lines.length) {
-                    let nextLine = lines[currentLineIndex].trim();
-                    if (nextLine.startsWith("elif ")) {
-                        let elifBlock = getBlockLines(currentLineIndex);
-                        if (!conditionMet && evaluateExpression(nextLine.substring(5).trim(), globalScope) === true) {
-                            await executeBlock(elifBlock);
-                            conditionMet = true;
-                        }
-                        currentLineIndex += elifBlock.length + 1;
-                    } else if (nextLine.startsWith("else")) {
-                        let elseBlock = getBlockLines(currentLineIndex);
-                        if (!conditionMet) {
-                            await executeBlock(elseBlock);
-                        }
-                        currentLineIndex += elseBlock.length + 1;
-                        break;
-                    } else {
-                        break;
-                    }
-                }
-                continue;
-            }
-
-            await executeStatement(line, globalScope);
-            currentLineIndex++;
-        }
-    } catch (err) {
-        logToConsole(err.message, true);
+        return new Function(...keys, `return (${working});`)(...vals);
+    } catch (e) {
+        return working.replace(/"/g, '');
     }
 }
 
