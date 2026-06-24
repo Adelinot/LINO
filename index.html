@@ -3,52 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lino</title>
-
+    <title>Lino IDE</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<header>
-    <h1>Lino</h1>
-    <p>Programming in plain English.</p>
-</header>
-
-<main>
-
-    <section id="editor-section">
-
-        <div class="section-title">
-            Code
+    <div class="navbar">
+        <div class="logo">LINO IDE 🚀</div>
+        <button id="run-btn">▶ Run Code</button>
+    </div>
+    
+    <div class="container">
+        <div class="pane editor-pane">
+            <div class="pane-title">Code</div>
+            <div class="ide-wrapper">
+                <div id="line-numbers" class="gutter">1</div>
+                <textarea id="editor" spellcheck="false" autocomplete="off" placeholder="write your lino code here... Eg: say adelino"></textarea>
+                <pre id="highlight-layer"><code id="highlight-code"></code></pre>
+            </div>
         </div>
-
-        <textarea id="editor" spellcheck="false">
-say "Hello, World!"
-        </textarea>
-
-        <button id="runButton">
-            ▶ Run
-        </button>
-
-    </section>
-
-    <section id="output-section">
-
-        <div class="section-title">
-            Output
+        
+        <div class="pane output-pane">
+            <div class="pane-title">Output</div>
+            <div id="output"></div>
         </div>
+    </div>
 
-        <pre id="output"></pre>
-
-    </section>
-
-</main>
-
-<footer>
-    Lino Version 1.0 Alpha
-</footer>
-
-<script src="script.js"></script>
-
+    <script src="script.js"></script>
 </body>
 </html>
