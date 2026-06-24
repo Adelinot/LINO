@@ -6,7 +6,7 @@ const outputElement = document.getElementById('output');
 
 editor.addEventListener('input', updateEditor);
 
-// Layer Scroll Binder
+// Synchronized Editor Scrolling Layers
 editor.addEventListener('scroll', () => {
     const highlightLayer = document.getElementById('highlight-layer');
     highlightLayer.scrollTop = editor.scrollTop;
@@ -14,7 +14,7 @@ editor.addEventListener('scroll', () => {
     lineNumbers.scrollTop = editor.scrollTop;
 });
 
-// Custom Tab Key Interception Rule
+// Custom Tab Key Indentation Hijack
 editor.addEventListener('keydown', function(e) {
     if (e.key === 'Tab') {
         e.preventDefault();
@@ -211,7 +211,7 @@ async function runLino() {
             return Function(`return [${itemsRaw}];`)();
         }
 
-        // 1. Hide literal strings to protect them from conversion hooks
+        // 1. Hide literal strings to protect them from logical operator token checks
         let stringPlaceholders = [];
         working = working.replace(/("[^"]*")/g, match => {
             stringPlaceholders.push(match);
@@ -221,19 +221,19 @@ async function runLino() {
         // 2. Translate 'X at Y' safely into standard executable bracket references 'X[Y]'
         working = working.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\s+at\s+([a-zA-Z0-9_]+|\([^)]+\))/g, '$1[$2]');
 
-        // 3. Process standalone logical text keywords
+        // 3. Process structural logical keywords safely outside strings
         working = working.replace(/\bis not\b/g, '!==')
                          .replace(/\bis\b/g, '===')
                          .replace(/\band\b/g, '&&')
                          .replace(/\bor\b/g, '||')
                          .replace(/\bnot\b/g, '!');
 
-        // 4. Restore uncorrupted strings back into the statement expression
+        // 4. Restore original textual string items back into the formula matrix
         for (let i = 0; i < stringPlaceholders.length; i++) {
             working = working.replace(`___STR_TOKEN_${i}___`, stringPlaceholders[i]);
         }
 
-        // Custom Task Engine Matching Hooks
+        // Custom Task Engine Handling Context Hooks
         let funcMatch = working.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)$/);
         if (funcMatch) {
             let taskName = funcMatch[1];
@@ -251,31 +251,12 @@ async function runLino() {
             }
         }
 
+        // 5. Scoped Sandbox Expression Engine Context execution using 'with(this)'
         let combinedScope = { ...globalScope, ...scope };
-        let keys = Object.keys(combinedScope);
-        let vals = Object.values(combinedScope);
-
         try {
-            return new Function(...keys, `return (${working});`)(...vals);
+            return new Function(`with(this) { return (${working}); }`).call(combinedScope);
         } catch (e) {
-            // --- COMPOUND STRING INTERPOLATION FALLBACK STACK ---
-            let tokens = working.split('+');
-            let finalStitchedResult = "";
-
-            for (let token of tokens) {
-                let cleanToken = token.trim();
-                if (cleanToken.startsWith('"') && cleanToken.endsWith('"')) {
-                    finalStitchedResult += cleanToken.slice(1, -1);
-                } else {
-                    try {
-                        let evaluatedVar = new Function(...keys, `return (${cleanToken});`)(...vals);
-                        finalStitchedResult += (evaluatedVar !== undefined ? evaluatedVar : cleanToken);
-                    } catch(innerErr) {
-                        finalStitchedResult += cleanToken.replace(/"/g, '');
-                    }
-                }
-            }
-            return finalStitchedResult;
+            parseError("Evaluation Error", e.message);
         }
     }
 
