@@ -117,7 +117,7 @@ body {
     overflow: hidden;
 }
 
-/* Perfect Match Overlay Layout */
+/* Perfect Match Overlay Layout Architecture */
 #editor, #highlight-layer {
     position: absolute;
     top: 0;
@@ -173,7 +173,7 @@ body {
     height: calc(100% - 32px);
 }
 
-/* Token Styles */
+/* Color Tokens Rules */
 .token-keyword { color: var(--token-keyword); font-weight: bold; }
 .token-builtin { color: var(--token-builtin); }
 .token-task { color: var(--token-task); font-weight: bold; }
@@ -184,7 +184,7 @@ body {
 .token-symbol { color: #ffd700; }
 .token-comment { color: var(--token-comment); font-style: italic; }
 
-/* In-Terminal Input Box */
+/* In-Terminal Active Input Line */
 .terminal-input-line {
     display: flex;
     align-items: center;
