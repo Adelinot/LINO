@@ -1,3 +1,179 @@
+:root {
+    --bg-main: #1e1e1e;
+    --bg-header: #252526;
+    --bg-gutter: #1e1e1e;
+    --border-color: #3c3c3c;
+    --text-main: #d4d4d4;
+    --text-gutter: #858585;
+    --accent-color: #0e639c;
+    --accent-hover: #1177bb;
+    --font-mono: 'Consolas', 'Fira Code', 'Courier New', monospace;
+
+    /* Professional Python-competitor syntax coloring stack */
+    --token-keyword: #c586c0;    /* Control: if, elif, else, when, repeat */
+    --token-builtin: #dcdcaa;    /* Core commands: say, ask, list */
+    --token-task: #4fc1ff;       /* Function keywords: task */
+    --token-string: #ce9178;     /* Strings */
+    --token-number: #b5cea8;     /* Integers/Decimals */
+    --token-boolean: #569cd6;    /* yes / no constants */
+    --token-comment: #6a9955;    /* Code Comments */
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.navbar {
+    background-color: var(--bg-header);
+    padding: 0 20px;
+    height: 45px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.logo {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e1e1e1;
+}
+
+#run-btn {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+#run-btn:hover { background-color: var(--accent-hover); }
+
+.container {
+    display: flex;
+    flex: 1;
+    height: calc(100vh - 45px);
+}
+
+.pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+}
+
+.pane:first-child {
+    border-right: 1px solid var(--border-color);
+}
+
+.pane-title {
+    background-color: #2d2d2d;
+    padding: 8px 16px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-gutter);
+    border-bottom: 1px solid var(--border-color);
+    height: 32px;
+}
+
+.ide-wrapper {
+    position: relative;
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    background-color: var(--bg-main);
+    height: calc(100% - 32px);
+}
+
+.gutter {
+    width: 45px;
+    background-color: var(--bg-gutter);
+    color: var(--text-gutter);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    line-height: 1.5;
+    padding-top: 15px;
+    text-align: right;
+    padding-right: 12px;
+    user-select: none;
+    border-right: 1px solid #2d2d2d;
+    overflow: hidden;
+}
+
+#editor, #highlight-layer {
+    position: absolute;
+    top: 0;
+    left: 45px;
+    width: calc(100% - 45px);
+    height: 100%;
+    margin: 0;
+    padding: 15px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    line-height: 1.5;
+    tab-size: 4;
+    white-space: pre;
+    overflow: auto;
+}
+
+#editor {
+    z-index: 2;
+    background: transparent;
+    color: transparent;
+    caret-color: #ffffff;
+    border: none;
+    resize: none;
+    outline: none;
+}
+
+#highlight-layer {
+    z-index: 1;
+    pointer-events: none;
+    color: #9cdcfe;
+    background-color: transparent;
+}
+
+#output {
+    flex: 1;
+    background-color: #151515;
+    color: #e1e1e1;
+    padding: 15px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-y: auto;
+    height: calc(100% - 32px);
+}
+
+/* --- Granular Syntax Engine CSS Tokens --- */
+.token-keyword { color: var(--token-keyword); font-weight: bold; }
+.token-builtin { color: var(--token-builtin); }
+.token-task { color: var(--token-task); font-weight: bold; }
+.token-string { color: var(--token-string); }
+.token-number { color: var(--token-number); }
+.token-boolean { color: var(--token-boolean); }
+.token-operator { color: #b4b4b4; font-weight: bold; }
+.token-symbol { color: #ffd700; }
+.token-comment { color: var(--token-comment); font-style: italic; }
+
 /* Inline Terminal Input Area Styling */
 .terminal-input-line {
     display: flex;
@@ -5,6 +181,7 @@
     font-family: var(--font-mono);
     font-size: 14px;
     color: #e1e1e1;
+    margin-top: 2px;
 }
 
 .terminal-prompt-text {
@@ -16,8 +193,12 @@
     background: transparent;
     border: none;
     outline: none;
-    color: #ffd700; /* Yellow text for user inputs */
+    color: #ffd700; 
     font-family: var(--font-mono);
     font-size: 14px;
     flex: 1;
 }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-main); }
+::-webkit-scrollbar-thumb { background: #424242; border-radius: 4px; }
