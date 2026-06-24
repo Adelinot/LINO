@@ -89,7 +89,6 @@ async function runLino() {
         outputElement.scrollTop = outputElement.scrollHeight;
     }
 
-    // Creates an interactive input line inside the output pane and waits for completion
     function readTerminalInput(promptText) {
         return new Promise((resolve) => {
             const inputContainer = document.createElement('div');
@@ -113,7 +112,6 @@ async function runLino() {
             inputBox.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     const value = inputBox.value;
-                    // Freeze text into log view
                     inputContainer.remove();
                     logToConsole(promptText + value);
                     resolve(value);
@@ -157,7 +155,6 @@ async function runLino() {
     }
 
     async function executeStatement(lineText, scope = null) {
-        // Target active scope context cleanly (resolves variable iteration bugs)
         let targetScope = scope || globalScope;
 
         if (lineText.startsWith("say ")) {
@@ -169,12 +166,12 @@ async function runLino() {
             let parts = assignment.split('=');
             if (parts.length !== 2) parseError("Syntax Error", "Invalid variable assignment declaration.");
             let varName = parts[0].trim();
+            let value = evaluateExpression(parts[1].trim(), targetScope);
             
-            // If variable exists in outer global reference, mutate that context directly
             if (scope && globalScope[varName] !== undefined && scope[varName] === undefined) {
-                globalScope[varName] = evaluateExpression(parts[1].trim(), scope);
+                globalScope[varName] = value;
             } else {
-                targetScope[varName] = evaluateExpression(parts[1].trim(), targetScope);
+                targetScope[varName] = value;
             }
         }
         else if (lineText.startsWith("ask ")) {
@@ -205,7 +202,6 @@ async function runLino() {
         let working = expr.trim();
         working = working.replace(/\byes\b/g, 'true').replace(/\bno\b/g, 'false');
 
-        // Python style text printing: say "Score is: " + score
         if (working.startsWith("list(") && working.endsWith(")")) {
             let itemsRaw = working.slice(5, -1);
             return Function(`return [${itemsRaw}];`)();
@@ -215,7 +211,7 @@ async function runLino() {
             let parts = working.split(" at ");
             let listName = parts[0].trim();
             let indexExpr = parts[1].trim();
-            let targetList = scope[listName] || globalScope[listName];
+            let targetList = scope[listName] !== undefined ? scope[listName] : globalScope[listName];
             if (!Array.isArray(targetList)) parseError("Name Error", `'${listName}' is not a list.`);
             return targetList[evaluateExpression(indexExpr, scope)];
         }
@@ -226,38 +222,18 @@ async function runLino() {
                          .replace(/\bor\b/g, '||')
                          .replace(/\bnot\b/g, '!');
 
-        let funcMatch = working.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)$/);
-        if (funcMatch) {
-            let taskName = funcMatch[1];
-            let rawArgs = funcMatch[2];
-            if (customTasks[taskName]) {
-                let taskObj = customTasks[taskName];
-                let passedArgs = rawArgs.trim() === "" ? [] : rawArgs.split(',').map(a => evaluateExpression(a.trim(), scope));
-                if (passedArgs.length !== taskObj.params.length) {
-                    parseError("Argument Error", `Expected ${taskObj.params.length} parameters, got ${passedArgs.length}.`);
-                }
-                let taskScope = {};
-                taskObj.params.forEach((param, idx) => { taskScope[param] = passedArgs[idx]; });
-                executeBlock(taskObj.block, taskScope);
-                return;
-            }
-        }
-
+        // Sandbox Context Evaluation: Avoids corrupting string texts
         let combinedScope = { ...globalScope, ...scope };
-        for (let key in combinedScope) {
-            let regex = new RegExp(`\\b${key}\\b`, 'g');
-            let val = combinedScope[key];
-            working = working.replace(regex, typeof val === 'string' ? `"${val}"` : JSON.stringify(val));
-        }
+        let keys = Object.keys(combinedScope);
+        let vals = Object.values(combinedScope);
 
         try {
-            return Function(`return (${working});`)();
+            return new Function(...keys, `return (${working});`)(...vals);
         } catch (e) {
             return working.replace(/"/g, '');
         }
     }
 
-    // Main Instruction Loop Core Engine Context
     try {
         while (currentLineIndex < lines.length) {
             let rawLine = lines[currentLineIndex];
