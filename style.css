@@ -129,16 +129,16 @@ body {
     font-size: 14px;
     line-height: 1.5;
     tab-size: 4;
-    white-space: pre-wrap; /* Changed from pre to pre-wrap to match syntax wrapper wrapping */
-    word-wrap: break-word;
-    overflow-y: auto;
+    white-space: pre; /* Keep this matched perfectly */
+    overflow: auto;
+    box-sizing: border-box;
 }
 
 #editor {
     z-index: 2;
-    background: transparent;
-    color: transparent; /* This hides your raw text typing layer */
-    caret-color: #ffffff; /* This keeps your blinking white cursor visible */
+    background: transparent !important;
+    color: transparent !important; /* Hides raw text typing layer */
+    caret-color: #ffffff !important; /* Keeps your blinking cursor bright white */
     border: none;
     resize: none;
     outline: none;
@@ -148,8 +148,7 @@ body {
     z-index: 1;
     pointer-events: none;
     background-color: transparent;
-    white-space: pre-wrap;
-    word-wrap: break-word;
+    color: #9cdcfe; /* Fallback text color if things aren't highlighted */
 }
 
 #output {
